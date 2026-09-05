@@ -1,7 +1,7 @@
 # HRD Genomic Scar Score
 
-> **Domain:** Medical Oncology & Cancer Staging Systems  
-> **Reference Guidelines & Standards:** `AJCC Cancer Staging Manual & NCCN Clinical Practice Guidelines`
+> **Domain:** Medical Oncology & Cancer Staging Systems
+> **Reference Guidelines & Standards:** AJCC Cancer Staging Manual & NCCN Clinical Practice Guidelines
 
 <div align="center">
 
@@ -16,101 +16,180 @@
 
 ---
 
-## 📖 What It Does
+## Overview
 
-Homologous Recombination Deficiency (HRD) Scar Score
-Combines Loss of Heterozygosity (LOH), Telomeric Allelic Imbalance (TAI), and Large-scale State Transitions (LST).
+Homologous Recombination Deficiency (HRD) Scar Score combines Loss of Heterozygosity (LOH), Telomeric Allelic Imbalance (TAI), and Large-scale State Transitions (LST) into a unified genomic scar score.
 
-Zero-dependency Python implementation with single and batch evaluation.
+Zero-dependency Python implementation with single and batch evaluation capabilities.
+
 Author: Dr. Abu Suraih Sakhri
 License: MIT
 
 ---
 
-## ⚙️ Key Capabilities & Algorithmic Modules
+## Key Features
 
-### 🔬 Analytical Functions
+### Core Algorithm (`hrd_scar.py`)
 
-- **`calculate_metrics()`**: Core domain algorithm for hrd-genomic-scar-score.
-- **`process_single()`** — calculates and validates process_single parameters.
-- **`process_batch()`** — calculates and validates process_batch parameters.
-- **`main()`** — calculates and validates main parameters.
+- **`calculate_metrics(**kwargs)`** — Core scoring algorithm that evaluates numeric parameters and produces a composite score with clinical classification.
+- **`process_single(args)`** — Evaluate a single case from CLI arguments.
+- **`process_batch(input_csv, output_csv)`** — Process batch CSV records and append score columns.
 
----
+### Enterprise Agent System (`agents/`)
 
-## 📐 Mathematical Formulation & Logic
-
-```text
-  score = primary_val
-  rounded_score = round(score, 2)
-  res = calculate_metrics(**kwargs)
-  calc_res = calculate_metrics(**r)
-```
+- **Zero-PHI Outbound Interceptor** — Active regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
+- **Tamper-Evident HMAC-SHA256 Audit Trail** — Chained, cryptographically signed logs for every evaluation.
+- **Multi-Worker Evaluation** — InvariantQCWorker, SafetyEscalationWorker, ProtocolConformanceWorker.
+- **FastAPI REST API** — OpenAPI 3.1 REST endpoints with `/health`, `/metrics`, `/api/audit`, `/api/chat`.
 
 ---
 
-## 💻 CLI Quickstart & Usage
+## Installation
 
-### 1. Guided Interactive Mode
 ```bash
-python cli.py
+# Clone the repository
+git clone https://github.com/abusuraihsakhri/hrd-genomic-scar-score.git
+cd hrd-genomic-scar-score
+
+# Install core (zero dependencies)
+pip install -e .
+
+# Install with web API support
+pip install -e ".[web]"
+
+# Install with all dependencies (including tests)
+pip install -e ".[all]"
 ```
 
-### 2. Direct Parameterized Evaluation
+---
+
+## Usage
+
+### Core CLI (`hrd_scar.py`)
+
+**Single evaluation:**
 ```bash
-python cli.py --task-id <value> --target <value> --primary <value> --secondary <value>
+python hrd_scar.py single --v1 14.5 --v2 4.2 --v3 1.8
 ```
 
-### Parameter Reference
-- `--task-id`: Specifies input measurement or parameter value.
-- `--target`: Specifies input measurement or parameter value.
-- `--primary`: Specifies input measurement or parameter value.
-- `--secondary`: Specifies input measurement or parameter value.
-- `--critical`: Specifies input measurement or parameter value.
-- `--status`: Specifies input measurement or parameter value.
-- `--input`: Specifies input measurement or parameter value.
-- `--output`: Specifies input measurement or parameter value.
+**Batch processing:**
+```bash
+python hrd_scar.py batch -i sample.csv -o results.csv
+```
+
+### Enterprise CLI (`cli.py`)
+
+**Run audit evaluation:**
+```bash
+python cli.py audit --task-id TASK-001 --primary 28.5 --secondary 14.2
+```
+
+**Batch processing:**
+```bash
+python cli.py batch -i input.csv -o output.csv
+```
+
+**Verify audit trail:**
+```bash
+python cli.py verify-audit
+```
+
+**Launch REST API server:**
+```bash
+python cli.py serve --host 127.0.0.1 --port 8000
+```
 
 ### Input Data Schema
 
 | Field | Description | Requirement |
 |:------|:------------|:------------|
-| `Patient_ID` | Parameter / observation metric | Required |
-| `v1` | Parameter / observation metric | Required |
-| `v2` | Parameter / observation metric | Required |
-| `v3` | Parameter / observation metric | Required |
+| `Patient_ID` | Patient identifier | Required |
+| `v1` | Primary measurement (LOH) | Required |
+| `v2` | Secondary measurement (TAI) | Required |
+| `v3` | Tertiary measurement (LST) | Required |
 
 ---
 
-## 🛡️ Security & Enterprise Architecture
+## Mathematical Formulation
 
-* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
-* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
-* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
-* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
-* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
+The composite score is calculated as:
+
+```
+score = v1 + v2/2 + v3/3 + ...
+```
+
+Classification tiers:
+- **Low / Standard** (score < 10.0): Standard monitoring
+- **Moderate / Intermediate** (10.0 <= score < 25.0): Close observation
+- **High / Severe** (score >= 25.0): Urgent clinical intervention
 
 ---
 
-## 🧪 Testing & Verification
+## Security
 
-Run the automated test suite:
+- **Zero-PHI Outbound Guard:** Blocks SSNs, MRNs, phone numbers, emails, and patient names from outbound data.
+- **HMAC-SHA256 Audit Trail:** Cryptographic chain of signed log entries.
+- **Secure Key Generation:** Uses `secrets.token_hex()` for cryptographically secure random key generation when no `AUDIT_SECRET_KEY` environment variable is set.
+
+Set a persistent audit key via environment variable:
+```bash
+export AUDIT_SECRET_KEY="your-secure-key-here"
+```
+
+---
+
+## Testing
 
 ```bash
+# Run all tests
 pytest -v
-```
 
-Execute high-throughput batch simulation benchmarks:
+# Run with coverage
+pytest -v --cov
 
-```bash
-python simulator.py --tasks 1000 --concurrency 8
+# Run simulation benchmark
+python simulator.py 1000
 ```
 
 ---
 
-## 🐳 Container Deployment
+## Docker Deployment
 
 ```bash
+# Build and run with Docker Compose
+docker compose up --build
+
+# Or manually
 docker build -t hrd-genomic-scar-score .
-docker run -p 8000:8000 hrd-genomic-scar-score
+docker run -p 8000:8000 --env AUDIT_SECRET_KEY=your-key hrd-genomic-scar-score
+```
+
+---
+
+## Project Structure
+
+```
+hrd-genomic-scar-score/
+├── hrd_scar.py          # Core algorithm (zero dependencies)
+├── cli.py               # Enterprise CLI interface
+├── simulator.py         # Stress testing simulator
+├── enrichment.py        # Feature enrichment engines
+├── agents/
+│   ├── __init__.py      # Package init
+│   ├── base.py          # Security, PHI guard, audit trail
+│   ├── models.py        # Pydantic data models
+│   ├── supervisor.py    # Multi-worker orchestrator
+│   ├── workers.py       # Specialized evaluation workers
+│   ├── api.py           # FastAPI REST endpoints
+│   ├── llm_factory.py   # LLM provider factory
+│   ├── metrics.py       # Prometheus metrics collector
+│   ├── streamer.py      # WebSocket telemetry
+│   └── learning.py      # Bayesian calibration engine
+├── tests/               # Test suite
+├── web/                 # Web operations console
+├── sample.csv           # Sample input data
+├── benchmark_dataset.json # Benchmark test cases
+├── Dockerfile           # Container build
+├── docker-compose.yml   # Container orchestration
+└── pyproject.toml       # Project metadata and dependencies
 ```

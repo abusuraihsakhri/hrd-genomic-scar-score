@@ -11,16 +11,25 @@ License: MIT
 import argparse
 import csv
 import json
-import math
-import sys
-from typing import Dict, Any, List, Optional
+import os
+from typing import Any, Dict, List
 
 
-def calculate_metrics(**kwargs) -> Dict[str, Any]:
+def calculate_metrics(**kwargs: Any) -> Dict[str, Any]:
     """
-    Core domain algorithm for hrd-genomic-scar-score.
+    Core domain algorithm for HRD Genomic Scar Score.
+
+    Evaluates numeric parameters and produces a composite score with
+    clinical classification and recommendation.
+
+    Args:
+        **kwargs: Named parameters. Numeric values contribute to the score.
+
+    Returns:
+        Dictionary containing score, classification, clinical recommendation,
+        and count of inputs evaluated.
     """
-    params = {}
+    params: Dict[str, Any] = {}
     for k, v in kwargs.items():
         if v is not None:
             try:
@@ -37,7 +46,7 @@ def calculate_metrics(**kwargs) -> Dict[str, Any]:
         score += nv * (1.0 / idx)
 
     rounded_score = round(score, 2)
-    
+
     # Classification / tiering
     if rounded_score < 10.0:
         tier = "Low / Standard"
@@ -58,7 +67,8 @@ def calculate_metrics(**kwargs) -> Dict[str, Any]:
     }
 
 
-def process_single(args) -> None:
+def process_single(args: argparse.Namespace) -> None:
+    """Process a single evaluation from CLI args."""
     kwargs = vars(args)
     kwargs.pop("func", None)
     res = calculate_metrics(**kwargs)
@@ -66,13 +76,28 @@ def process_single(args) -> None:
 
 
 def process_batch(input_csv: str, output_csv: str) -> None:
+    """
+    Process batch CSV records and append score columns.
+
+    Args:
+        input_csv: Path to input CSV file.
+        output_csv: Path to output CSV file.
+
+    Raises:
+        FileNotFoundError: If input CSV does not exist.
+        PermissionError: If output CSV cannot be written.
+        csv.Error: If CSV parsing fails.
+    """
+    if not os.path.isfile(input_csv):
+        raise FileNotFoundError(f"Input CSV not found: {input_csv}")
+
     with open(input_csv, mode="r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         fieldnames = list(reader.fieldnames or [])
         rows = list(reader)
 
     out_fields = fieldnames + ["score", "classification", "clinical_recommendation"]
-    out_rows = []
+    out_rows: List[Dict[str, Any]] = []
 
     for r in rows:
         calc_res = calculate_metrics(**r)
@@ -82,6 +107,11 @@ def process_batch(input_csv: str, output_csv: str) -> None:
         row_dict["clinical_recommendation"] = calc_res["clinical_recommendation"]
         out_rows.append(row_dict)
 
+    # Ensure output directory exists
+    out_dir = os.path.dirname(output_csv)
+    if out_dir and not os.path.isdir(out_dir):
+        os.makedirs(out_dir, exist_ok=True)
+
     with open(output_csv, mode="w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=out_fields)
         writer.writeheader()
@@ -90,7 +120,7 @@ def process_batch(input_csv: str, output_csv: str) -> None:
     print(f"Processed {len(out_rows)} records -> {output_csv}")
 
 
-def main(argv=None):
+def main(argv: List[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Homologous Recombination Deficiency (HRD) Scar Score")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
