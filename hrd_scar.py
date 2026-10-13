@@ -8,7 +8,7 @@ treatment. No clinical cut-off is applied.
 import argparse
 import csv
 import json
-import math
+from decimal import Decimal, InvalidOperation
 import os
 from typing import Any
 
@@ -29,11 +29,16 @@ def _event_count(value: Any, metric: str) -> int:
     if isinstance(value, bool) or value is None or str(value).strip() == "":
         raise ValueError(f"{metric} must be a non-negative integer event count")
     try:
-        number = float(value)
-    except (ValueError, TypeError, OverflowError) as exc:
+        number = Decimal(str(value))
+    except (InvalidOperation, ValueError, TypeError) as exc:
         raise ValueError(f"{metric} must be a non-negative integer event count") from exc
-    if not math.isfinite(number) or number < 0 or not number.is_integer():
-        raise ValueError(f"{metric} must be a non-negative integer event count")
+    if (
+        not number.is_finite()
+        or number < 0
+        or number != number.to_integral_value()
+        or number > 9007199254740991
+    ):
+        raise ValueError(f"{metric} must be a non-negative integer event count (maximum 2^53-1)")
     return int(number)
 
 
@@ -77,14 +82,16 @@ def process_batch(input_csv: str, output_csv: str) -> None:
     """
     if not os.path.isfile(input_csv):
         raise FileNotFoundError(f"Input CSV not found: {input_csv}")
-    if os.path.abspath(input_csv) == os.path.abspath(output_csv):
+    if os.path.abspath(input_csv) == os.path.abspath(output_csv) or (
+        os.path.exists(output_csv) and os.path.samefile(input_csv, output_csv)
+    ):
         raise ValueError("Input and output CSV paths must be different")
     with open(input_csv, "r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         fields = list(reader.fieldnames or [])
         if not fields or len(set(fields)) != len(fields):
             raise ValueError("CSV must have a nonempty header with unique columns")
-        if any(field in fields for field in OUTPUT_COLUMNS):
+        if any(field.lower() in OUTPUT_COLUMNS for field in fields):
             raise ValueError("CSV contains reserved output column names")
         header_keys = [field.lower() for field in fields]
         if len(set(header_keys)) != len(header_keys):

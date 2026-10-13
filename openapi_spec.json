@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Hrd Genomic Scar Score API",
-    "description": "Enterprise Distributed Component Platform (Clinical & Cryptographic AI) adhering to CAP / CLSI / NIST Standards.",
-    "version": "3.0.0-ENTERPRISE",
+    "description": "Research-only HRD component sum and separate unvalidated demonstration workflow",
+    "version": "3.0.1",
     "contact": {
       "name": "Dr. Abu Suraih Sakhri",
       "url": "https://github.com/abusuraihsakhri"
@@ -25,14 +25,14 @@
         "summary": "Prometheus operational metrics",
         "responses": {
           "200": {
-            "description": "Prometheus text metrics"
+            "description": "JSON metrics snapshot (not Prometheus text)"
           }
         }
       }
     },
     "/api/audit": {
       "post": {
-        "summary": "Dispatch task payload across specialized workers",
+        "summary": "Demonstration-only worker rules (not clinical triage)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -76,7 +76,7 @@
     },
     "/api/chat": {
       "post": {
-        "summary": "Air-gapped supervisory conversational assistant",
+        "summary": "Deterministic mock response; no external LLM",
         "requestBody": {
           "content": {
             "application/json": {
@@ -103,10 +103,55 @@
     },
     "/api/audit/logs": {
       "get": {
-        "summary": "Retrieve and cryptographically verify HMAC audit trail",
+        "summary": "Read process-local audit trail (requires configured Bearer token)",
         "responses": {
           "200": {
             "description": "Cryptographic audit trail"
+          },
+          "403": {
+            "description": "Token absent or invalid; endpoint may be disabled"
+          }
+        }
+      }
+    },
+    "/api/score": {
+      "post": {
+        "summary": "Sum precomputed integer LOH, TAI and LST event counts; no clinical classification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "loh",
+                  "tai",
+                  "lst"
+                ],
+                "properties": {
+                  "loh": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "tai": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "lst": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Research-only composite event count"
+          },
+          "422": {
+            "description": "Invalid event count"
           }
         }
       }
