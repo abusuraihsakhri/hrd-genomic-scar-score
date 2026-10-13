@@ -8,8 +8,8 @@ treatment. No clinical cut-off is applied.
 import argparse
 import csv
 import json
-from decimal import Decimal, InvalidOperation
 import os
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 METRIC_ALIASES = {
@@ -43,10 +43,10 @@ def _event_count(value: Any, metric: str) -> int:
 
 
 def calculate_metrics(**kwargs: Any) -> dict[str, Any]:
-    """Sum explicitly named precomputed LOH, TAI and LST event counts.
+    """Sum named precomputed LOH, TAI and LST event counts.
 
-    The historical v1/v2/v3 aliases remain supported. Unrelated fields
-    (including identifiers and other numeric CSV columns) are not scored.
+    Historical v1/v2/v3 aliases remain supported. Other numeric CSV columns
+    are treated as metadata and are never included in the result.
     """
     supplied = {str(key).lower(): value for key, value in kwargs.items()}
     metrics: dict[str, int] = {}
@@ -75,30 +75,29 @@ def process_single(args: argparse.Namespace) -> None:
 
 
 def process_batch(input_csv: str, output_csv: str) -> None:
-    """Score a CSV using LOH/TAI/LST (or v1/v2/v3) columns, preserving metadata.
-
-    Validation is completed before output is written. The source CSV is never
-    overwritten, including when the output path refers to the same file.
-    """
+    """Score CSV rows, preserving unrelated metadata and validating all rows."""
     if not os.path.isfile(input_csv):
         raise FileNotFoundError(f"Input CSV not found: {input_csv}")
     if os.path.abspath(input_csv) == os.path.abspath(output_csv) or (
         os.path.exists(output_csv) and os.path.samefile(input_csv, output_csv)
     ):
         raise ValueError("Input and output CSV paths must be different")
+
     with open(input_csv, "r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         fields = list(reader.fieldnames or [])
         if not fields or len(set(fields)) != len(fields):
             raise ValueError("CSV must have a nonempty header with unique columns")
-        if any(field.lower() in OUTPUT_COLUMNS for field in fields):
-            raise ValueError("CSV contains reserved output column names")
         header_keys = [field.lower() for field in fields]
         if len(set(header_keys)) != len(header_keys):
             raise ValueError("CSV contains case-insensitive duplicate columns")
+        if any(field in ("score", "classification", "clinical_recommendation") for field in header_keys):
+            raise ValueError("CSV contains reserved output column names")
         for metric, aliases in METRIC_ALIASES.items():
             if sum(alias in header_keys for alias in aliases) != 1:
                 raise ValueError(f"CSV requires exactly one {metric.upper()} column")
+
+        added_columns = [key for key in OUTPUT_COLUMNS if key not in header_keys]
         output_rows = []
         for line_number, row in enumerate(reader, start=2):
             if None in row or any(value is None for value in row.values()):
@@ -107,19 +106,18 @@ def process_batch(input_csv: str, output_csv: str) -> None:
                 result = calculate_metrics(**row)
             except ValueError as exc:
                 raise ValueError(f"CSV row {line_number}: {exc}") from exc
-            # Prevent spreadsheet formula execution on subsequently opened exports.
             safe_metadata = {}
             for key, value in row.items():
                 if value and value.lstrip().startswith(("=", "+", "-", "@", "\t", "\r")):
                     safe_metadata[key] = "'" + value
                 else:
                     safe_metadata[key] = value
-            output_rows.append({**safe_metadata, **{key: result[key] for key in OUTPUT_COLUMNS}})
+            output_rows.append({**safe_metadata, **{key: result[key] for key in added_columns}})
 
     directory = os.path.dirname(os.path.abspath(output_csv))
     os.makedirs(directory, exist_ok=True)
     with open(output_csv, "w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields + list(OUTPUT_COLUMNS))
+        writer = csv.DictWriter(handle, fieldnames=fields + added_columns)
         writer.writeheader()
         writer.writerows(output_rows)
     print(f"Processed {len(output_rows)} records -> {output_csv}")
