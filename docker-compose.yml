@@ -1,19 +1,14 @@
-version: '3.8'
-
 services:
   hrd-genomic-scar-score:
     build: .
-    container_name: hrd-genomic-scar-score
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      - AUDIT_SECRET_KEY=${AUDIT_SECRET_KEY:-}
-      - MODEL_PROVIDER=mock
-    env_file:
-      - .env
+      AUDIT_SECRET_KEY: ${AUDIT_SECRET_KEY:-}
+      AUDIT_LOG_API_TOKEN: ${AUDIT_LOG_API_TOKEN:-}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       retries: 3

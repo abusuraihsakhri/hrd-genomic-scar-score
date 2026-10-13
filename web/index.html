@@ -1,236 +1,84 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hrd Genomic Scar Score — Operations Console</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #090d16;
-            --card: #111827;
-            --border: #1f293d;
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.25);
-            --text: #f3f4f6;
-            --text-muted: #9ca3af;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #10b981;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding: 2rem;
-            min-height: 100vh;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        .header-title h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
-        .header-title p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; }
-        .badge {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            background: var(--accent-glow);
-            color: var(--accent);
-            border: 1px solid var(--accent);
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr;
-            gap: 1.5rem;
-        }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .card h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem; }
-        input, select, textarea {
-            width: 100%;
-            padding: 0.65rem 0.9rem;
-            background: #0d1322;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: #fff;
-            font-family: inherit;
-            font-size: 0.9rem;
-        }
-        input:focus, textarea:focus { outline: none; border-color: var(--accent); }
-        .btn {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 0.7rem 1.4rem;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-            width: 100%;
-        }
-        .btn:hover { background: #2563eb; }
-        .terminal {
-            background: #060911;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            color: #10b981;
-            height: 380px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-        .metrics-bar {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        .metric-box {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-        }
-        .metric-val { font-size: 1.4rem; font-weight: 700; color: #fff; margin-top: 0.25rem; }
-        .metric-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="description" content="Research-only LOH, TAI and LST genomic scar event-count calculator.">
+  <title>HRD genomic scar component calculator</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.mjs"></script>
 </head>
 <body>
+  <div class="wrap">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">GENOMIC INSTABILITY · RESEARCH UTILITY</p>
+        <h1>HRD genomic scar score</h1>
+        <p class="subtitle">Arithmetic sum of precomputed loss of heterozygosity, telomeric allelic imbalance, and large-scale state transition counts.</p>
+      </div>
+      <a class="repo" href="https://github.com/abusuraihsakhri/hrd-genomic-scar-score" rel="noopener noreferrer">Source repository ↗</a>
+    </header>
 
-    <div class="header">
-        <div class="header-title">
-            <h1>Hrd Genomic Scar Score</h1>
-            <p>Domain: Clinical & Cryptographic AI | Standard: CAP / CLSI / NIST Standards | LabMind-Atlas Architecture</p>
-        </div>
-        <div>
-            <span class="badge">Air-Gapped Active</span>
-            <span class="badge" style="background: rgba(16,185,129,0.2); color: #10b981; border-color: #10b981;">Zero-PHI Guard Active</span>
-        </div>
-    </div>
+    <section class="notice" aria-label="Scientific limitations">
+      <strong>Research use only — not a diagnostic HRD test.</strong>
+      This tool does not derive genomic events from sequencing files, validate an assay, infer BRCA status, apply a clinical cut-off, or determine treatment eligibility. Only use event counts produced by an appropriate validated pipeline.
+    </section>
 
-    <div class="metrics-bar">
-        <div class="metric-box">
-            <div class="metric-label">System Status</div>
-            <div class="metric-val" style="color: var(--success);" id="m-status">OPTIMAL</div>
+    <main class="layout">
+      <section class="panel" aria-labelledby="single-title">
+        <div class="section-heading">
+          <div><span class="step">01</span><h2 id="single-title">Single sample</h2></div>
+          <p>Enter whole-number event counts.</p>
         </div>
-        <div class="metric-box">
-            <div class="metric-label">Tasks Processed</div>
-            <div class="metric-val" id="m-tasks">142</div>
+        <form id="single-form" novalidate>
+          <div class="fields">
+            <div class="field"><label for="loh">LOH events</label><input id="loh" name="loh" type="number" required min="0" step="1" value="15" inputmode="numeric"><small>Loss of heterozygosity</small></div>
+            <div class="field"><label for="tai">TAI events</label><input id="tai" name="tai" type="number" required min="0" step="1" value="12" inputmode="numeric"><small>Telomeric allelic imbalance</small></div>
+            <div class="field"><label for="lst">LST events</label><input id="lst" name="lst" type="number" required min="0" step="1" value="8" inputmode="numeric"><small>Large-scale state transitions</small></div>
+          </div>
+          <button type="submit" class="primary">Calculate component sum</button>
+          <p id="single-error" class="error" role="alert" aria-live="polite"></p>
+        </form>
+        <div class="result" aria-live="polite" aria-atomic="true">
+          <div>
+            <span class="result-label">Combined event count</span>
+            <output id="score" for="loh tai lst">—</output>
+          </div>
+          <span id="interpretation" class="result-note">No clinical classification assigned</span>
         </div>
-        <div class="metric-box">
-            <div class="metric-label">Audit Blocks Signed</div>
-            <div class="metric-val" id="m-audit">142</div>
-        </div>
-        <div class="metric-box">
-            <div class="metric-label">PHI Interceptions</div>
-            <div class="metric-val" style="color: var(--accent);" id="m-phi">0</div>
-        </div>
-    </div>
+        <p class="formula"><strong>Formula:</strong> LOH + TAI + LST. No weighting or generic threshold is applied.</p>
+      </section>
 
-    <div class="grid">
-        <div class="card">
-            <h2>⚙️ Dispatch Distributed Component Audit</h2>
-            <div class="form-group">
-                <label>Task / Sample ID</label>
-                <input type="text" id="task_id" value="TASK-2026-LIVE-01">
-            </div>
-            <div class="form-group">
-                <label>Target Identifier</label>
-                <input type="text" id="target_id" value="SPECIMEN-ALPHA-77">
-            </div>
-            <div class="form-group">
-                <label>Primary Measurement / Value</label>
-                <input type="number" id="primary_metric" value="29.4" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Secondary Metric / Kinetic Index</label>
-                <input type="number" id="secondary_metric" value="14.8" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Status / Phenotype Descriptor</label>
-                <input type="text" id="status_descriptor" value="DISCORDANT_ANOMALY">
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" id="is_critical" checked> Trigger Emergency / Critical Flag</label>
-            </div>
-            <button class="btn" onclick="runAudit()">Execute Distributed Component Audit</button>
+      <section class="panel" aria-labelledby="batch-title">
+        <div class="section-heading">
+          <div><span class="step">02</span><h2 id="batch-title">CSV batch processing</h2></div>
+          <p>Process multiple samples in your browser.</p>
         </div>
-
-        <div class="card">
-            <h2>📊 Real-Time Consensus Dossier & Audit Log</h2>
-            <div class="terminal" id="outputConsole">// Hrd Genomic Scar Score Operations Console Ready
-// Connection established with Air-Gapped Supervisor
-// Cryptographic HMAC-SHA256 audit ledger loaded.
-// Ready for live task payload dispatch...</div>
+        <p class="muted">Upload a UTF-8 CSV with <code>loh</code>, <code>tai</code>, <code>lst</code> columns (historical names <code>v1</code>, <code>v2</code>, <code>v3</code> also accepted). Other columns are preserved but never scored.</p>
+        <form id="batch-form">
+          <label for="csv-file" class="upload-label">Select CSV file <span class="subtle">maximum 2 MB / 20,000 records</span></label>
+          <input id="csv-file" type="file" accept=".csv,text/csv" required>
+          <div class="actions">
+            <button type="submit" class="primary" id="process-btn">Process CSV</button>
+            <button type="button" id="export-btn" class="secondary" disabled>Export results.csv</button>
+          </div>
+        </form>
+        <p id="batch-status" class="status" role="status" aria-live="polite">No file processed.</p>
+        <p id="batch-error" class="error" role="alert" aria-live="polite"></p>
+        <div class="sample-format">
+          <span class="muted">Example input</span>
+          <pre>Sample_ID,loh,tai,lst
+SYN-01,15,12,8
+SYN-02,7,4,2</pre>
         </div>
-    </div>
+      </section>
+    </main>
 
-    <script>
-        async function runAudit() {
-            const consoleEl = document.getElementById('outputConsole');
-            consoleEl.innerText = "// Dispatching task across specialized workers...
-// Invoking InvariantQCWorker, SafetyEscalationWorker, ProtocolWorker...";
-
-            const payload = {
-                task_id: document.getElementById('task_id').value,
-                target_identifier: document.getElementById('target_id').value,
-                primary_metric: parseFloat(document.getElementById('primary_metric').value),
-                secondary_metric: parseFloat(document.getElementById('secondary_metric').value),
-                status_descriptor: document.getElementById('status_descriptor').value,
-                is_critical_flag: document.getElementById('is_critical').checked
-            };
-
-            try {
-                const res = await fetch('/api/audit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                consoleEl.innerText = JSON.stringify(data, null, 2);
-                document.getElementById('m-tasks').innerText = parseInt(document.getElementById('m-tasks').innerText) + 1;
-                document.getElementById('m-audit').innerText = parseInt(document.getElementById('m-audit').innerText) + 1;
-            } catch (err) {
-                consoleEl.innerText = "// Offline / Simulation Output:\n" + JSON.stringify({
-                    dossier_id: "DOSSIER-SIM-" + Math.floor(Math.random()*10000),
-                    system: "hrd-genomic-scar-score",
-                    domain: "Clinical & Cryptographic AI",
-                    task_id: payload.task_id,
-                    overall_urgency: payload.is_critical_flag ? "CRITICAL_STAT_PANIC" : "ELEVATED_RISK",
-                    integrity_status: "DISCORDANT_ANOMALY",
-                    alerts: [
-                        { worker: "InvariantQCWorker", alert: "Primary metric exceeds upper reference bound" },
-                        { worker: "SafetyEscalationWorker", alert: "Critical emergency interlock flag active" }
-                    ],
-                    audit_hash: "HMAC_SHA256_e83f9a72b941d6c381f9"
-                }, null, 2);
-            }
-        }
-    </script>
+    <footer>
+      <p><strong>Privacy:</strong> Calculation and CSV processing occur entirely in your browser; no data is uploaded, logged, or saved by this page. Avoid using real patient identifiers.</p>
+      <p>Genomic scar definitions, analytic validation, and clinical interpretation are assay-specific. This implementation is not the proprietary myChoice CDx algorithm.</p>
+    </footer>
+  </div>
 </body>
 </html>

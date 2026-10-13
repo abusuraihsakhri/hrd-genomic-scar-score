@@ -4,17 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hrd-genomic-scar-score"
-version = "3.0.0"
-description = "Homologous Recombination Deficiency (HRD) Scar Score - Zero-dependency Python implementation"
+version = "3.0.1"
+description = "Research-only sum of precomputed LOH, TAI and LST genomic scar event counts"
 readme = "README.md"
 license = {text = "MIT"}
-authors = [
-    {name = "Dr. Abu Suraih Sakhri"}
-]
+authors = [{name = "Dr. Abu Suraih Sakhri"}]
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -24,8 +22,8 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-web = ["fastapi>=0.110", "uvicorn[standard]>=0.27"]
-test = ["pytest>=7.0"]
+web = ["fastapi>=0.110", "uvicorn[standard]>=0.27", "pydantic>=2.0"]
+test = ["pytest>=7.0", "pydantic>=2.0"]
 all = ["fastapi>=0.110", "uvicorn[standard]>=0.27", "pytest>=7.0", "pydantic>=2.0"]
 
 [project.scripts]
@@ -33,6 +31,7 @@ hrd-scar = "hrd_scar:main"
 
 [tool.setuptools]
 packages = ["agents"]
+py-modules = ["hrd_scar", "cli", "enrichment", "simulator"]
 
 [tool.pytest.ini_options]
 testpaths = [".", "tests"]

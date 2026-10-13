@@ -1,19 +1,20 @@
-"""
-FastAPI REST API Server for Hrd Genomic Scar Score.
-"""
-from typing import Dict, Any, List
-from fastapi import FastAPI, HTTPException
+"""FastAPI service for the optional demo workflow and HRD component arithmetic."""
+import hmac
+import os
+
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
-from .base import AuditLogger, PHIGuard
-from .models import SystemTaskPayload, ConsensusDossier
+
+from hrd_scar import calculate_metrics
+from .base import AuditLogger, SecurityException
+from .models import SystemTaskPayload
 from .supervisor import SystemSupervisor
 
 supervisor = SystemSupervisor(model_provider="mock")
-
 app = FastAPI(
-    title="Hrd Genomic Scar Score API",
-    description="Enterprise Distributed Component Platform (Clinical & Biomedical AI)",
-    version="3.0.0-ENTERPRISE",
+    title="HRD Genomic Scar Score API",
+    description="Research-only genomic scar component sum and separate demonstration audit workflow",
+    version="3.0.1",
 )
 
 
@@ -21,9 +22,15 @@ class ChatRequest(BaseModel):
     query: str
 
 
+class ScoreRequest(BaseModel):
+    loh: int
+    tai: int
+    lst: int
+
+
 @app.get("/health")
 def health():
-    return {"status": "HEALTHY", "service": "hrd-genomic-scar-score", "domain": "Clinical & Biomedical AI", "standard": "CAP / CLSI / ISO Standards", "version": "3.0.0-ENTERPRISE"}
+    return {"status": "HEALTHY", "service": "hrd-genomic-scar-score", "version": "3.0.1"}
 
 
 @app.get("/metrics")
@@ -31,25 +38,38 @@ def metrics():
     return {
         "dossiers_processed_total": len(supervisor.dossier_registry),
         "audit_blocks_total": len(AuditLogger.get_trail()),
-        "system_status": "NOMINAL_OPTIMAL"
+        "audit_chain_verified": AuditLogger.verify_integrity(),
     }
+
+
+@app.post("/api/score")
+def api_score(payload: ScoreRequest):
+    try:
+        return calculate_metrics(**payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/api/audit")
 def api_audit(payload: SystemTaskPayload):
-    dossier = supervisor.process_task(payload)
-    return dossier.to_dict()
+    try:
+        return supervisor.process_task(payload).to_dict()
+    except SecurityException as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/api/chat")
 def api_chat(req: ChatRequest):
     try:
-        ans = supervisor.query_supervisory_chat(req.query)
-        return {"response": ans}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return {"response": supervisor.query_supervisory_chat(req.query)}
+    except SecurityException as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/api/audit/logs")
-def api_audit_logs():
+def api_audit_logs(authorization: str | None = Header(default=None)):
+    token = os.getenv("AUDIT_LOG_API_TOKEN", "")
+    expected = "Bearer " + token
+    if not token or not authorization or not hmac.compare_digest(authorization, expected):
+        raise HTTPException(status_code=403, detail="Audit log access disabled or unauthorized")
     return {"audit_trail": AuditLogger.get_trail(), "verified": AuditLogger.verify_integrity()}
