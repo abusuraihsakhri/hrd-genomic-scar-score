@@ -1,147 +1,134 @@
 #!/usr/bin/env python3
-"""
-Homologous Recombination Deficiency (HRD) Scar Score
-Combines Loss of Heterozygosity (LOH), Telomeric Allelic Imbalance (TAI), and Large-scale State Transitions (LST).
+"""Research-only arithmetic for precomputed LOH, TAI and LST scar counts.
 
-Zero-dependency Python implementation with single and batch evaluation.
-Author: Dr. Abu Suraih Sakhri
-License: MIT
+The input event counts must originate from a separately validated genomic
+pipeline. This module does not call variants, estimate HRD status, or recommend
+treatment. No clinical cut-off is applied.
 """
-
 import argparse
 import csv
 import json
+import math
 import os
-from typing import Any, Dict, List
+from typing import Any
+
+METRIC_ALIASES = {
+    "loh": ("loh", "v1"),
+    "tai": ("tai", "v2"),
+    "lst": ("lst", "v3"),
+}
+OUTPUT_COLUMNS = ("loh", "tai", "lst", "score", "classification", "clinical_recommendation")
+INTERPRETATION = "Not interpreted (assay-specific validation required)"
+DISCLAIMER = (
+    "Research use only: the sum of supplied event counts is not a validated "
+    "HRD result or treatment recommendation."
+)
 
 
-def calculate_metrics(**kwargs: Any) -> Dict[str, Any]:
+def _event_count(value: Any, metric: str) -> int:
+    if isinstance(value, bool) or value is None or str(value).strip() == "":
+        raise ValueError(f"{metric} must be a non-negative integer event count")
+    try:
+        number = float(value)
+    except (ValueError, TypeError, OverflowError) as exc:
+        raise ValueError(f"{metric} must be a non-negative integer event count") from exc
+    if not math.isfinite(number) or number < 0 or not number.is_integer():
+        raise ValueError(f"{metric} must be a non-negative integer event count")
+    return int(number)
+
+
+def calculate_metrics(**kwargs: Any) -> dict[str, Any]:
+    """Sum explicitly named precomputed LOH, TAI and LST event counts.
+
+    The historical v1/v2/v3 aliases remain supported. Unrelated fields
+    (including identifiers and other numeric CSV columns) are not scored.
     """
-    Core domain algorithm for HRD Genomic Scar Score.
-
-    Evaluates numeric parameters and produces a composite score with
-    clinical classification and recommendation.
-
-    Args:
-        **kwargs: Named parameters. Numeric values contribute to the score.
-
-    Returns:
-        Dictionary containing score, classification, clinical recommendation,
-        and count of inputs evaluated.
-    """
-    params: Dict[str, Any] = {}
-    for k, v in kwargs.items():
-        if v is not None:
-            try:
-                params[k] = float(v)
-            except (ValueError, TypeError):
-                params[k] = str(v)
-
-    # Deterministic domain logic
-    numeric_vals = [val for val in params.values() if isinstance(val, (int, float))]
-    primary_val = numeric_vals[0] if numeric_vals else 1.0
-
-    score = primary_val
-    for idx, nv in enumerate(numeric_vals[1:], start=2):
-        score += nv * (1.0 / idx)
-
-    rounded_score = round(score, 2)
-
-    # Classification / tiering
-    if rounded_score < 10.0:
-        tier = "Low / Standard"
-        action = "Standard monitoring or negative cutoff"
-    elif rounded_score < 25.0:
-        tier = "Moderate / Intermediate"
-        action = "Close observation or secondary evaluation"
-    else:
-        tier = "High / Severe"
-        action = "Urgent clinical intervention or primary positive finding"
+    supplied = {str(key).lower(): value for key, value in kwargs.items()}
+    metrics: dict[str, int] = {}
+    for metric, aliases in METRIC_ALIASES.items():
+        present = [key for key in aliases if key in supplied]
+        if len(present) != 1:
+            raise ValueError(
+                f"Provide exactly one {metric.upper()} field "
+                f"({', '.join(aliases)})"
+            )
+        metrics[metric] = _event_count(supplied[present[0]], metric.upper())
 
     return {
         "tool": "hrd-genomic-scar-score",
-        "score": rounded_score,
-        "classification": tier,
-        "clinical_recommendation": action,
-        "inputs_evaluated": len(params),
+        **metrics,
+        "score": sum(metrics.values()),
+        "classification": INTERPRETATION,
+        "clinical_recommendation": DISCLAIMER,
+        "inputs_evaluated": 3,
     }
 
 
 def process_single(args: argparse.Namespace) -> None:
-    """Process a single evaluation from CLI args."""
-    kwargs = vars(args)
-    kwargs.pop("func", None)
-    res = calculate_metrics(**kwargs)
-    print(json.dumps(res, indent=2))
+    result = calculate_metrics(loh=args.loh, tai=args.tai, lst=args.lst)
+    print(json.dumps(result, indent=2))
 
 
 def process_batch(input_csv: str, output_csv: str) -> None:
-    """
-    Process batch CSV records and append score columns.
+    """Score a CSV using LOH/TAI/LST (or v1/v2/v3) columns, preserving metadata.
 
-    Args:
-        input_csv: Path to input CSV file.
-        output_csv: Path to output CSV file.
-
-    Raises:
-        FileNotFoundError: If input CSV does not exist.
-        PermissionError: If output CSV cannot be written.
-        csv.Error: If CSV parsing fails.
+    Validation is completed before output is written. The source CSV is never
+    overwritten, including when the output path refers to the same file.
     """
     if not os.path.isfile(input_csv):
         raise FileNotFoundError(f"Input CSV not found: {input_csv}")
+    if os.path.abspath(input_csv) == os.path.abspath(output_csv):
+        raise ValueError("Input and output CSV paths must be different")
+    with open(input_csv, "r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fields = list(reader.fieldnames or [])
+        if not fields or len(set(fields)) != len(fields):
+            raise ValueError("CSV must have a nonempty header with unique columns")
+        if any(field in fields for field in OUTPUT_COLUMNS):
+            raise ValueError("CSV contains reserved output column names")
+        header_keys = [field.lower() for field in fields]
+        if len(set(header_keys)) != len(header_keys):
+            raise ValueError("CSV contains case-insensitive duplicate columns")
+        for metric, aliases in METRIC_ALIASES.items():
+            if sum(alias in header_keys for alias in aliases) != 1:
+                raise ValueError(f"CSV requires exactly one {metric.upper()} column")
+        output_rows = []
+        for line_number, row in enumerate(reader, start=2):
+            if None in row or any(value is None for value in row.values()):
+                raise ValueError(f"Malformed CSV row {line_number}: column count mismatch")
+            try:
+                result = calculate_metrics(**row)
+            except ValueError as exc:
+                raise ValueError(f"CSV row {line_number}: {exc}") from exc
+            output_rows.append({**row, **{key: result[key] for key in OUTPUT_COLUMNS}})
 
-    with open(input_csv, mode="r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        fieldnames = list(reader.fieldnames or [])
-        rows = list(reader)
-
-    out_fields = fieldnames + ["score", "classification", "clinical_recommendation"]
-    out_rows: List[Dict[str, Any]] = []
-
-    for r in rows:
-        calc_res = calculate_metrics(**r)
-        row_dict = dict(r)
-        row_dict["score"] = calc_res["score"]
-        row_dict["classification"] = calc_res["classification"]
-        row_dict["clinical_recommendation"] = calc_res["clinical_recommendation"]
-        out_rows.append(row_dict)
-
-    # Ensure output directory exists
-    out_dir = os.path.dirname(output_csv)
-    if out_dir and not os.path.isdir(out_dir):
-        os.makedirs(out_dir, exist_ok=True)
-
-    with open(output_csv, mode="w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=out_fields)
+    directory = os.path.dirname(os.path.abspath(output_csv))
+    os.makedirs(directory, exist_ok=True)
+    with open(output_csv, "w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields + list(OUTPUT_COLUMNS))
         writer.writeheader()
-        writer.writerows(out_rows)
+        writer.writerows(output_rows)
+    print(f"Processed {len(output_rows)} records -> {output_csv}")
 
-    print(f"Processed {len(out_rows)} records -> {output_csv}")
 
-
-def main(argv: List[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Homologous Recombination Deficiency (HRD) Scar Score")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # Single parser
-    single_parser = subparsers.add_parser("single", help="Evaluate single case")
-    single_parser.add_argument("--v1", type=float, default=10.0, help="Primary parameter")
-    single_parser.add_argument("--v2", type=float, default=5.0, help="Secondary parameter")
-    single_parser.add_argument("--v3", type=float, default=2.0, help="Tertiary parameter")
-    single_parser.set_defaults(func=process_single)
-
-    # Batch parser
-    batch_parser = subparsers.add_parser("batch", help="Process batch CSV")
-    batch_parser.add_argument("-i", "--input", required=True, help="Input CSV")
-    batch_parser.add_argument("-o", "--output", default="results.csv", help="Output CSV")
-
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Research-only HRD genomic-scar component sum")
+    commands = parser.add_subparsers(dest="command", required=True)
+    single = commands.add_parser("single", help="Sum LOH, TAI and LST event counts")
+    single.add_argument("--loh", "--v1", dest="loh", type=float, default=10)
+    single.add_argument("--tai", "--v2", dest="tai", type=float, default=5)
+    single.add_argument("--lst", "--v3", dest="lst", type=float, default=2)
+    batch = commands.add_parser("batch", help="Process CSV of component event counts")
+    batch.add_argument("-i", "--input", required=True)
+    batch.add_argument("-o", "--output", default="results.csv")
     args = parser.parse_args(argv)
-
-    if args.command == "single":
-        args.func(args)
-    elif args.command == "batch":
-        process_batch(args.input, args.output)
+    try:
+        if args.command == "single":
+            process_single(args)
+        else:
+            process_batch(args.input, args.output)
+    except (ValueError, OSError, csv.Error) as exc:
+        parser.error(str(exc))
 
 
 if __name__ == "__main__":
