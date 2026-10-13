@@ -29,9 +29,16 @@ Scientific references:
 
 ## Browser usage
 
-Open [web/index.html](web/index.html) locally or publish the web/ directory through GitHub Pages using the included workflow. A plain JavaScript implementation is used rather than Pyodide because the operation is straightforward and fully client-side. Assets use relative URLs.
+Serve the [web/](web/) directory from a local HTTP server, or publish it through GitHub Pages using the included workflow. For example:
 
-Enter LOH, TAI, and LST counts or upload a CSV with loh, tai, lst columns. Legacy v1, v2, v3 aliases are accepted. Other columns are retained but not included in the score. Files are processed only in your browser, with no network requests or local storage. The browser limits files to 2 MB and 20,000 records.
+~~~bash
+python -m http.server 8001 --directory web
+# Open http://127.0.0.1:8001
+~~~
+
+Opening the HTML file directly using a file:// URL is not supported consistently by browsers because it loads JavaScript modules. A plain JavaScript implementation is used rather than Pyodide because the operation is straightforward and fully client-side. Assets use relative URLs.
+
+Enter LOH, TAI, and LST counts or upload a CSV with loh, tai, lst columns. Legacy v1, v2, v3 aliases are accepted. Other columns are retained but not included in the score. Unsafe spreadsheet-formula prefixes in exported metadata are escaped with a leading apostrophe. Files are processed only in your browser, with no network requests or local storage. The browser limits files to 2 MB and 20,000 records.
 
 ## Python installation and CLI
 

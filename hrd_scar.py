@@ -107,7 +107,14 @@ def process_batch(input_csv: str, output_csv: str) -> None:
                 result = calculate_metrics(**row)
             except ValueError as exc:
                 raise ValueError(f"CSV row {line_number}: {exc}") from exc
-            output_rows.append({**row, **{key: result[key] for key in OUTPUT_COLUMNS}})
+            # Prevent spreadsheet formula execution on subsequently opened exports.
+            safe_metadata = {}
+            for key, value in row.items():
+                if value and value.lstrip().startswith(("=", "+", "-", "@", "\t", "\r")):
+                    safe_metadata[key] = "'" + value
+                else:
+                    safe_metadata[key] = value
+            output_rows.append({**safe_metadata, **{key: result[key] for key in OUTPUT_COLUMNS}})
 
     directory = os.path.dirname(os.path.abspath(output_csv))
     os.makedirs(directory, exist_ok=True)
@@ -122,9 +129,9 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Research-only HRD genomic-scar component sum")
     commands = parser.add_subparsers(dest="command", required=True)
     single = commands.add_parser("single", help="Sum LOH, TAI and LST event counts")
-    single.add_argument("--loh", "--v1", dest="loh", type=float, default=10)
-    single.add_argument("--tai", "--v2", dest="tai", type=float, default=5)
-    single.add_argument("--lst", "--v3", dest="lst", type=float, default=2)
+    single.add_argument("--loh", "--v1", dest="loh", type=str, default="10")
+    single.add_argument("--tai", "--v2", dest="tai", type=str, default="5")
+    single.add_argument("--lst", "--v3", dest="lst", type=str, default="2")
     batch = commands.add_parser("batch", help="Process CSV of component event counts")
     batch.add_argument("-i", "--input", required=True)
     batch.add_argument("-o", "--output", default="results.csv")

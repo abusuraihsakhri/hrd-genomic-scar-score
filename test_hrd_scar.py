@@ -98,3 +98,17 @@ def test_single_default_values(capsys):
 def test_batch_missing_file(tmp_path):
     with pytest.raises(FileNotFoundError):
         process_batch(str(tmp_path / "missing.csv"), str(tmp_path / "output.csv"))
+
+
+def test_csv_formula_injection_sanitized(tmp_path):
+    source, target = tmp_path / "source.csv", tmp_path / "output.csv"
+    source.write_text("label,loh,tai,lst\n=HYPERLINK(\"\"bad\"\"),1,2,3\n", encoding="utf-8")
+    process_batch(str(source), str(target))
+    with target.open(newline="", encoding="utf-8") as f:
+        row = next(csv.DictReader(f))
+    assert row["label"].startswith("'=")
+
+
+def test_exact_integer_precision_rejected_if_unsafe():
+    with pytest.raises(ValueError):
+        calculate_metrics(loh="9007199254740993", tai="0", lst="0")
